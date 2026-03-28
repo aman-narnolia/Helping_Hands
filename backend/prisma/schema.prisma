@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  Needy
+  Donor
+  NGO
+  Admin
+}
+
+enum RequestStatus {
+  Pending
+  InProgress
+  Completed
+}
+
+enum DonationStatus {
+  Pending
+  Accepted
+  Completed
+}
+
+enum ResponseStatus {
+  Pending
+  Accepted
+  Rejected
+}
+
+model User {
+  id             String            @id @default(uuid())
+  name           String
+  email          String            @unique
+  passwordHash   String
+  role           Role
+  createdAt      DateTime          @default(now())
+
+  ngoProfile     NGO?
+  requests       Request[]
+  donations      Donation[]
+  responsesAsNGO Response[]        @relation("NGOResponses")
+  documents      Document[]
+  notifications  Notification[]
+  messagesSent   Message[]
+  chats          ChatParticipant[]
+}
+
+model NGO {
+  id                 String   @id
+  user               User     @relation(fields: [id], references: [id])
+  organizationName   String
+  verified           Boolean  @default(false)
+  verificationStatus String   @default("Pending") // Pending, Approved, Rejected
+}
+
+model Request {
+  id          String        @id @default(uuid())
+  needyId     String
+  needy       User          @relation(fields: [needyId], references: [id])
+  type        String
+  description String
+  location    String
+  status      RequestStatus @default(Pending)
+  createdAt   DateTime      @default(now())
+
+  responses   Response[]    @relation("RequestResponses")
+  chats       Chat[]        @relation("RequestChats")
+}
+
+model Donation {
+  id            String         @id @default(uuid())
+  donorId       String
+  donor         User           @relation(fields: [donorId], references: [id])
+  itemType      String
+  quantity      String
+  location      String
+  availableTime String
+  status        DonationStatus @default(Pending)
+  createdAt     DateTime       @default(now())
+
+  responses     Response[]     @relation("DonationResponses")
+  chats         Chat[]         @relation("DonationChats")
+}
+
+model Response {
+  id                 String         @id @default(uuid())
+  requestId          String?
+  request            Request?       @relation("RequestResponses", fields: [requestId], references: [id])
+  donationId         String?
+  donation           Donation?      @relation("DonationResponses", fields: [donationId], references: [id])
+  ngoId              String
+  ngo                User           @relation("NGOResponses", fields: [ngoId], references: [id])
+  reason             String
+  beneficiariesCount Int
+  status             ResponseStatus @default(Pending)
+  createdAt          DateTime       @default(now())
+}
+
+model Document {
+  id        String   @id @default(uuid())
+  ngoId     String
+  ngo       User     @relation(fields: [ngoId], references: [id])
+  docType   String
+  fileUrl   String
+  status    String   @default("Pending")
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Chat {
+  id           String            @id @default(uuid())
+  type         String            // "request", "donation", "general"
+  requestId    String?
+  request      Request?          @relation("RequestChats", fields: [requestId], references: [id])
+  donationId   String?
+  donation     Donation?         @relation("DonationChats", fields: [donationId], references: [id])
+  createdAt    DateTime          @default(now())
+
+  participants ChatParticipant[]
+  messages     Message[]
+}
+
+model ChatParticipant {
+  chatId String
+  userId String
+  chat   Chat @relation(fields: [chatId], references: [id])
+  user   User @relation(fields: [userId], references: [id])
+
+  @@id([chatId, userId])
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  chatId      String
+  chat        Chat     @relation(fields: [chatId], references: [id])
+  senderId    String
+  sender      User     @relation(fields: [senderId], references: [id])
+  messageText String
+  timestamp   DateTime @default(now())
+}
