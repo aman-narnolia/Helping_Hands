@@ -91,10 +91,6 @@ npm run dev
 
 ---
 
-## 👨‍💻 Team
-
-Team of 5 developers
-
 ---
 
 ## ⭐ Note
